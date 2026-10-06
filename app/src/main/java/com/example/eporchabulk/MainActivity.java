@@ -1,3 +1,5 @@
+package com.example.eporchabulk;
+
 import android.Manifest;
 import android.app.Activity;
 import android.app.DownloadManager;
@@ -45,6 +47,8 @@ public class MainActivity extends Activity {
         dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
         if (Build.VERSION.SDK_INT >= 33) {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
+        } else if (Build.VERSION.SDK_INT < 29) {
+            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 2);
         }
         buildUi();
         setupWebView();
@@ -278,12 +282,18 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void begin(String name) {
             try {
                 closeBlob();
-                ContentValues v = new ContentValues();
-                v.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
-                v.put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf");
-                v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/ePorcha");
-                blobUri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
-                blobOut = getContentResolver().openOutputStream(blobUri);
+                if (Build.VERSION.SDK_INT >= 29) {
+                    ContentValues v = new ContentValues();
+                    v.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
+                    v.put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf");
+                    v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/ePorcha");
+                    blobUri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                    blobOut = getContentResolver().openOutputStream(blobUri);
+                } else {
+                    java.io.File dir = new java.io.File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "ePorcha");
+                    dir.mkdirs();
+                    blobOut = new java.io.FileOutputStream(new java.io.File(dir, name));
+                }
             } catch (Exception e) {
                 blobOut = null;
                 fail("ফাইল তৈরি করা যায়নি: " + e.getMessage());
